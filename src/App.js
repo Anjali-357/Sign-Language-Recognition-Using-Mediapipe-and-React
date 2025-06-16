@@ -11,16 +11,16 @@ import {
 import { ToastContainer, toast } from "react-toastify";
 import "react-toastify/dist/ReactToastify.css";
 
+// Notify function (cleaner)
 const notifyMsg = (type, msg) => {
   if (type === "success") {
-    const notify = () => toast.success(msg);
-    notify();
+    toast.success(msg);
   } else {
-    const notify = () => toast.error(msg);
-    notify();
+    toast.error(msg);
   }
 };
 
+// Layout with children
 const Layout = ({ children }) => {
   return (
     <>
@@ -32,12 +32,11 @@ const Layout = ({ children }) => {
 };
 
 function App() {
-  
   return (
     <div className="App">
       <Routes>
+        {/* Home Route */}
         <Route
-          exact
           path="/"
           element={
             <Layout notifyMsg={notifyMsg}>
@@ -46,29 +45,31 @@ function App() {
           }
         />
 
+        {/* Detect Route */}
         <Route
-          exact
           path="/detect"
           element={
-            <Layout>
+            <Layout notifyMsg={notifyMsg}>
               <Detect />
             </Layout>
           }
         />
 
+        {/* Dashboard Route */}
         <Route
-          exact
           path="/dashboard"
           element={
-            <Layout>
-              <Dashboard/>
+            <Layout notifyMsg={notifyMsg}>
+              <Dashboard />
             </Layout>
           }
         />
 
-        <Route exact path="*" element={<NotFound />} />
+        {/* Not Found Route */}
+        <Route path="*" element={<NotFound />} />
       </Routes>
 
+      {/* Toast Container */}
       <ToastContainer
         position="top-left"
         autoClose={2000}

@@ -45,7 +45,7 @@ const ChartComp = ({ signDataList }) => {
     labels: dates.slice(0, 7),
     datasets: [
       {
-        data: secondsSpent,
+        data: secondsSpent.slice(0, 7),
         backgroundColor: "#f07458",
         barThickness: 20,
       },

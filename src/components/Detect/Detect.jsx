@@ -43,15 +43,20 @@ const Detect = () => {
 
   useEffect(() => {
     let intervalId;
-    if (webcamRunning) {
+  
+    if (webcamRunning && SignImageData.length > 0) {
       intervalId = setInterval(() => {
         const randomIndex = Math.floor(Math.random() * SignImageData.length);
         const randomImage = SignImageData[randomIndex];
         setCurrentImage(randomImage);
       }, 5000);
     }
-    return () => clearInterval(intervalId);
-  }, [webcamRunning]);
+  
+    return () => {
+      if (intervalId) clearInterval(intervalId);
+    };
+  }, [webcamRunning, SignImageData]);
+  
 
   if (
     process.env.NODE_ENV === "development" ||
@@ -61,17 +66,24 @@ const Detect = () => {
   }
 
   const predictWebcam = useCallback(() => {
+    if (!webcamRef.current || !webcamRef.current.video) {
+      console.warn("Webcam not ready");
+      requestRef.current = requestAnimationFrame(predictWebcam);
+      return;
+    }
+  
     if (runningMode === "IMAGE") {
       setRunningMode("VIDEO");
       gestureRecognizer.setOptions({ runningMode: "VIDEO" });
     }
-
+  
     let nowInMs = Date.now();
+  
     const results = gestureRecognizer.recognizeForVideo(
       webcamRef.current.video,
       nowInMs
     );
-
+  
     const canvasCtx = canvasRef.current.getContext("2d");
     canvasCtx.save();
     canvasCtx.clearRect(
@@ -80,18 +92,18 @@ const Detect = () => {
       canvasRef.current.width,
       canvasRef.current.height
     );
-
+  
     const videoWidth = webcamRef.current.video.videoWidth;
     const videoHeight = webcamRef.current.video.videoHeight;
-
+  
     // Set video width
     webcamRef.current.video.width = videoWidth;
     webcamRef.current.video.height = videoHeight;
-
+  
     // Set canvas height and width
     canvasRef.current.width = videoWidth;
     canvasRef.current.height = videoHeight;
-
+  
     // Draw the results on the canvas, if any.
     if (results.landmarks) {
       for (const landmarks of results.landmarks) {
@@ -99,10 +111,14 @@ const Detect = () => {
           color: "#00FF00",
           lineWidth: 5,
         });
-
-        drawLandmarks(canvasCtx, landmarks, { color: "#FF0000", lineWidth: 2 });
+  
+        drawLandmarks(canvasCtx, landmarks, {
+          color: "#FF0000",
+          lineWidth: 2,
+        });
       }
     }
+  
     if (results.gestures.length > 0) {
       setDetectedData((prevData) => [
         ...prevData,
@@ -110,18 +126,19 @@ const Detect = () => {
           SignDetected: results.gestures[0][0].categoryName,
         },
       ]);
-
+  
       setGestureOutput(results.gestures[0][0].categoryName);
       setProgress(Math.round(parseFloat(results.gestures[0][0].score) * 100));
     } else {
       setGestureOutput("");
       setProgress("");
     }
-
+  
     if (webcamRunning === true) {
       requestRef.current = requestAnimationFrame(predictWebcam);
     }
-  }, [webcamRunning, runningMode, gestureRecognizer, setGestureOutput]);
+  }, [webcamRunning, runningMode, gestureRecognizer]);
+  
 
   const animate = useCallback(() => {
     requestRef.current = requestAnimationFrame(animate);
@@ -209,22 +226,37 @@ const Detect = () => {
 
   useEffect(() => {
     async function loadGestureRecognizer() {
-      const vision = await FilesetResolver.forVisionTasks(
-        "https://cdn.jsdelivr.net/npm/@mediapipe/tasks-vision@latest/wasm"
-      );
-      const recognizer = await GestureRecognizer.createFromOptions(vision, {
-        baseOptions: {
-          modelAssetPath:
-            process.env.REACT_APP_FIREBASE_STORAGE_TRAINED_MODEL_25_04_2023,
-        },
-        numHands: 2,
-        runningMode: runningMode,
-      });
-      setGestureRecognizer(recognizer);
+      try {
+        const modelPath = `${process.env.PUBLIC_URL}/gesture_recognizer.task`;
+
+        
+        if (!modelPath) {
+          throw new Error("REACT_APP_MODEL_PATH is not defined");
+        }
+  
+        console.log("Loading model from:", modelPath);
+  
+        const vision = await FilesetResolver.forVisionTasks(
+          "https://cdn.jsdelivr.net/npm/@mediapipe/tasks-vision@latest/wasm"
+        );
+  
+        const recognizer = await GestureRecognizer.createFromOptions(vision, {
+          baseOptions: {
+            modelAssetPath: modelPath,
+          },
+          numHands: 2,
+          runningMode: runningMode,
+        });
+  
+        setGestureRecognizer(recognizer);
+      } catch (error) {
+        console.error("Failed to load gesture recognizer:", error);
+      }
     }
+  
     loadGestureRecognizer();
   }, [runningMode]);
-
+  
   return (
     <>
       <div className="signlang_detection-container">

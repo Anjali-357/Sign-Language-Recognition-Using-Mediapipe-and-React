@@ -25,7 +25,13 @@ import Cookies from "js-cookie";
 export const getSignData = () => async (dispatch) => {
   let signData = [];
 
-  const logedInUser = await JSON.parse(Cookies.get("sign-language-ai-user"));
+  const userCookie = Cookies.get("sign-language-ai-user");
+  const logedInUser = userCookie ? JSON.parse(userCookie) : null;
+
+  if (!logedInUser) {
+    console.error("User not logged in or cookie missing");
+    return;
+  }
 
   async function getData(db) {
     const noteCol = collection(db, "SignData");
